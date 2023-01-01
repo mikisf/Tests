@@ -12,8 +12,14 @@
     "@next/font": "13.1.1",
     "eslint": "8.30.0",
     "eslint-config-next": "13.1.1",
-    "next": "13.1.1",
+    "next": "^13.1.1",
     "react": "18.2.0",
-    "react-dom": "18.2.0"
+    "react-dom": "18.2.0",
+    "three": "^0.135.0",
+    "web-ifc-three": "^0.0.121"
+  },
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^15.0.1",
+    "rollup": "^2.79.1"
   }
 }
