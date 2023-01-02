@@ -36,7 +36,7 @@ export default function Home() {
             //Setup IFC Loader
             const ifcLoader = new IFCLoader();
             ifcLoader.ifcManager.setWasmPath('../../../../');
-            ifcLoader.load('rac_advanced_sample_project.ifc', function (model) {
+            ifcLoader.load('Revit Sant Vicenç.ifc', function (model) {
                 const mesh = model.mesh
                 model.geometry.center()
                 scene.add(mesh);
