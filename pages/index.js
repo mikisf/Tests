@@ -1,5 +1,5 @@
-import { IFCLoader } from "web-ifc-three/IFCLoader";
-//import { IFCLoader } from "three/examples/jsm/loaders/IFCLoader";
+//import { IFCLoader } from "web-ifc-three/IFCLoader";
+import { IFCLoader } from "three/examples/jsm/loaders/IFCLoader";
 import * as THREE from 'three';
 import { useEffect, useRef, useState } from "react";
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
