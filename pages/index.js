@@ -36,7 +36,7 @@ export default function Home() {
             //Setup IFC Loader
             const ifcLoader = new IFCLoader();
             ifcLoader.ifcManager.setWasmPath('../../../../');
-            ifcLoader.load('rac_advanced_sample_project.ifc', function (model) {
+            ifcLoader.load('example.ifc', function (model) {
                 const mesh = model.mesh
                 model.geometry.center()
                 scene.add(mesh);
@@ -48,6 +48,10 @@ export default function Home() {
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
             mountRef.current?.appendChild(renderer.domElement);
+
+            // Clipping planes (this is so you can see the inside of teh building)
+            const plane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 10)
+            renderer.clippingPlanes = [plane]
 
             //Controls
             const controls = new OrbitControls(camera, renderer.domElement);
