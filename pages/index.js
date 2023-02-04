@@ -12,7 +12,7 @@ export default function Home() {
 
         init();
 
-        function init() {
+        async function init() {
             //Scene
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x8cc7de);
@@ -35,7 +35,30 @@ export default function Home() {
 
             //Setup IFC Loader
             const ifcLoader = new IFCLoader();
+
+            async function setUpMultiThreading() {
+                const manager = ifcLoader.ifcManager;
+                // These paths depend on how you structure your project
+                await manager.useWebWorkers(true, "IFCWorker.js");
+                await manager.setWasmPath("../../../../");
+            }
+            setUpMultiThreading();
+            
+            function setupProgressNotification() {
+                const text = document.getElementById("progress-text");
+                ifcLoader.ifcManager.setOnProgress((event) => {
+                    text.innerText = (event.loaded / event.total) * 100
+                    console.log((event.loaded / event.total) * 100)
+                });
+            }
+            setupProgressNotification();
+            
+
             ifcLoader.ifcManager.setWasmPath('../../../../');
+            await ifcLoader.ifcManager.applyWebIfcConfig({
+                COORDINATE_TO_ORIGIN: true,
+            });
+            
             ifcLoader.load('example.ifc', function (model) {
                 const mesh = model.mesh
                 model.geometry.center()
@@ -58,6 +81,35 @@ export default function Home() {
             controls.addEventListener('change', render);
             window.addEventListener('resize', onWindowResize);
             render();
+
+            const highlightMaterial = new THREE.MeshPhongMaterial({ color: 0xff00ff, depthTest: false, transparent: true, opacity: 0.3 });
+            function selectObject(event) {
+
+                if (event.button != 0) return;
+
+                const mouse = new THREE.Vector2();
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+
+                const raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera(mouse, camera);
+                const intersected = raycaster.intersectObjects(scene.children, false);
+                if (intersected.length) {
+                    const found = intersected[0];
+                    const faceIndex = found.faceIndex;
+                    const geometry = found.object.geometry;
+                    const id = ifcLoader.ifcManager.getExpressId(geometry, faceIndex);
+                    const modelID = found.object.modelID;
+                    ifcLoader.ifcManager.createSubset({ modelID, ids: [id], scene, removePrevious: true, material: highlightMaterial });
+                    const props = ifcLoader.ifcManager.getItemProperties(modelID, id, true);
+                    console.log(props);
+                    renderer.render(scene, camera);
+                } else {
+                    ifcLoader.ifcManager.removeSubset(-1, highlightMaterial);
+                }
+            }
+
+            window.onpointerdown = selectObject;
         }
 
         function onWindowResize() {
@@ -75,6 +127,19 @@ export default function Home() {
     }, [])
 
     return (
-        <div ref={mountRef} />
+        <>
+            <div style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 50,
+                zIndex: 4,
+                height: '10%',
+                backgroundColor: 'red'
+            }}>
+                <p id="progress-text">progress:</p>
+            </div>
+            <div ref={mountRef} />
+        </>
+
     )
 }
