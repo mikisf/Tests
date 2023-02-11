@@ -3,9 +3,41 @@ import { IFCLoader } from "web-ifc-three/IFCLoader";
 import * as THREE from 'three';
 import { useEffect, useRef, useState } from "react";
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { IFCSITE, IFCWALLSTANDARDCASE, IFCSLAB, IFCDOOR, IFCWINDOW, IFCFURNISHINGELEMENT, IFCMEMBER, IFCPLATE } from "web-ifc";
 
 export default function Home() {
     const mountRef = useRef(null);
+    const [subsets, setSubsets] = useState({})
+    const [ifcLoaderVar, setIfcLoaderVar] = useState()
+    const [rendererVar, setRendererVar] = useState()
+    const [sceneVar, setScenceVar] = useState()
+    const [cameraVar, setCameraVar] = useState()
+
+    const categories = {
+        IFCSITE,
+        IFCWALLSTANDARDCASE,
+        IFCSLAB,
+        IFCFURNISHINGELEMENT,
+        IFCDOOR,
+        IFCWINDOW,
+        IFCPLATE,
+        IFCMEMBER,
+    };
+
+    async function setSubsetsAsync(ifcLoader, scene) {
+        const subsetsTemp = {}
+        for (let category of Object.values(categories)) {
+            const ids = await ifcLoader.ifcManager.getAllItemsOfType(0, category, false);
+            subsetsTemp[category] = ifcLoader.ifcManager.createSubset({
+                modelID: 0,
+                scene,
+                ids,
+                removePrevious: true,
+                customID: category.toString(),
+            })
+        }
+        setSubsets(subsetsTemp)
+    }
 
     useEffect(() => {
         let scene, camera, renderer;
@@ -35,35 +67,19 @@ export default function Home() {
 
             //Setup IFC Loader
             const ifcLoader = new IFCLoader();
-
-            async function setUpMultiThreading() {
-                const manager = ifcLoader.ifcManager;
-                // These paths depend on how you structure your project
-                await manager.useWebWorkers(true, "IFCWorker.js");
-                await manager.setWasmPath("../../../../");
-            }
-            setUpMultiThreading();
             
-            function setupProgressNotification() {
-                const text = document.getElementById("progress-text");
-                ifcLoader.ifcManager.setOnProgress((event) => {
-                    text.innerText = (event.loaded / event.total) * 100
-                    console.log((event.loaded / event.total) * 100)
-                });
-            }
-            setupProgressNotification();
-            
-
             ifcLoader.ifcManager.setWasmPath('../../../../');
-            await ifcLoader.ifcManager.applyWebIfcConfig({
+            ifcLoader.ifcManager.applyWebIfcConfig({
                 COORDINATE_TO_ORIGIN: true,
+                USE_FAST_BOOLS: false,
             });
-            
             ifcLoader.load('example.ifc', function (model) {
                 const mesh = model.mesh
                 model.geometry.center()
                 scene.add(mesh);
                 render();
+
+                setSubsetsAsync(ifcLoader, scene)
             });
 
             //Renderer
@@ -72,44 +88,42 @@ export default function Home() {
             renderer.setPixelRatio(window.devicePixelRatio);
             mountRef.current?.appendChild(renderer.domElement);
 
-            // Clipping planes (this is so you can see the inside of teh building)
-            const plane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 10)
-            renderer.clippingPlanes = [plane]
-
-            //Controls
-            const controls = new OrbitControls(camera, renderer.domElement);
-            controls.addEventListener('change', render);
-            window.addEventListener('resize', onWindowResize);
-            render();
-
-            const highlightMaterial = new THREE.MeshPhongMaterial({ color: 0xff00ff, depthTest: false, transparent: true, opacity: 0.3 });
-            function selectObject(event) {
-
+            const selectObject = async (event) => {
                 if (event.button != 0) return;
-
                 const mouse = new THREE.Vector2();
                 mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
                 mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
 
                 const raycaster = new THREE.Raycaster();
                 raycaster.setFromCamera(mouse, camera);
+
                 const intersected = raycaster.intersectObjects(scene.children, false);
                 if (intersected.length) {
+
                     const found = intersected[0];
                     const faceIndex = found.faceIndex;
                     const geometry = found.object.geometry;
                     const id = ifcLoader.ifcManager.getExpressId(geometry, faceIndex);
+
                     const modelID = found.object.modelID;
-                    ifcLoader.ifcManager.createSubset({ modelID, ids: [id], scene, removePrevious: true, material: highlightMaterial });
-                    const props = ifcLoader.ifcManager.getItemProperties(modelID, id, true);
-                    console.log(props);
-                    renderer.render(scene, camera);
-                } else {
-                    ifcLoader.ifcManager.removeSubset(-1, highlightMaterial);
+
+                    const props = await ifcLoader.ifcManager.getItemProperties(modelID, id, true)
+                    console.log(props)
                 }
             }
-
+            
+            //Controls
+            const controls = new OrbitControls(camera, renderer.domElement);
+            controls.addEventListener('change', render);
+            window.addEventListener('resize', onWindowResize);
             window.onpointerdown = selectObject;
+            render();
+
+            //Set variables
+            setScenceVar(scene)
+            setCameraVar(camera)
+            setRendererVar(renderer)
+            setIfcLoaderVar(ifcLoader)
         }
 
         function onWindowResize() {
@@ -128,17 +142,25 @@ export default function Home() {
 
     return (
         <>
+            <div ref={mountRef} />
             <div style={{
                 position: 'absolute',
-                bottom: 0,
-                left: 50,
-                zIndex: 4,
-                height: '10%',
-                backgroundColor: 'red'
+                display: 'flex',
+                flexDirection: 'column',
+                top: 0,
+                left: 0,
             }}>
-                <p id="progress-text">progress:</p>
+                {Object.keys(categories).map(category =>
+                    <button key={category} onClick={() => {
+                        const subset = subsets[categories[category]]
+                        console.log(subset)
+                        //subset.removeFromParent()
+                        sceneVar.remove(subset)
+                        console.log(subset)
+                        rendererVar.render(sceneVar, cameraVar);
+                    }}>{category}</button>
+                )}
             </div>
-            <div ref={mountRef} />
         </>
 
     )
