@@ -5,7 +5,7 @@ export default function Home() {
 
     useEffect(() => {
         console.log(ifcElements.IFCSITE)
-        console.log(eval("ifcElements.IFCSITE"))
+        console.log(ifcElements["IFCSITE"])
     }, [])
 
     return (
