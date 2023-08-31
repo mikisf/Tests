@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { IFCLoader } from "web-ifc-three/IFCLoader";
+import { IFCSPACE } from 'web-ifc';
 
 export default function Home() {
 
@@ -75,20 +76,18 @@ export default function Home() {
             const ifcLoader = new IFCLoader();
             await ifcLoader.ifcManager.setWasmPath("../../../../");
             await ifcLoader.ifcManager.applyWebIfcConfig({
-                //COORDINATE_TO_ORIGIN: true,
+                COORDINATE_TO_ORIGIN: true,
+            });
+            await ifcLoader.ifcManager.parser.setupOptionalCategories({
+                [IFCSPACE]: false,
+            });
+            ifcLoader.ifcManager.setOnProgress((event) => {
+                console.log((event.loaded / event.total) * 100)
             });
 
-            ifcLoader.load("environment.ifc", async function (mesh) {                
-                mesh.geometry.translate(-441395.796875, -185.7699966430664, 4607105.75)
+            ifcLoader.load("ifc.ifc", async function (mesh) {
                 sceneVar.add(mesh)
                 outsideRender()
-                console.log("environment.ifc loaded")
-            })
-            ifcLoader.load("facade.ifc", async function (mesh) {
-                mesh.geometry.translate(-441395.796875, -185.7699966430664, 4607105.75)
-                sceneVar.add(mesh)
-                outsideRender()
-                console.log("facade.ifc loaded")
             })
         }
         loadIfcFile()
