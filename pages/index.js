@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import * as THREE from "three";
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { IFCLoader } from "web-ifc-three/IFCLoader";
-import { IFCSPACE } from 'web-ifc';
+import * as THREE from 'three';
+import * as OBC from 'openbim-components';
 
 export default function Home() {
 
@@ -21,7 +20,7 @@ export default function Home() {
             container = document.createElement('div');
             scene = new THREE.Scene()
             setSceneVar(scene)
-            scene.background = new THREE.Color("0xff0000");
+            scene.background = new THREE.Color(0x8cc7de);
 
             // Camera
             camera = new THREE.PerspectiveCamera(10, window.innerWidth / window.innerHeight, 1, 100000);
@@ -38,6 +37,13 @@ export default function Home() {
             scene.add(directionalLight2);
             const ambientLight = new THREE.AmbientLight(0xffffee, 0.25);
             scene.add(ambientLight);
+
+            // Cube
+            const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
+            const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
+            const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+            cube.position.set(0, 0, 0);
+            scene.add(cube);
 
             // Renderer
             renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -69,29 +75,6 @@ export default function Home() {
         const localRef = mountRef.current ? mountRef.current : null;
         return () => localRef.removeChild(renderer.domElement);
     }, []);
-
-    useEffect(() => {
-        if (sceneVar === undefined) return
-        const loadIfcFile = async () => {
-            const ifcLoader = new IFCLoader();
-            await ifcLoader.ifcManager.setWasmPath("../../../../");
-            await ifcLoader.ifcManager.applyWebIfcConfig({
-                COORDINATE_TO_ORIGIN: true,
-            });
-            await ifcLoader.ifcManager.parser.setupOptionalCategories({
-                [IFCSPACE]: false,
-            });
-            ifcLoader.ifcManager.setOnProgress((event) => {
-                console.log((event.loaded / event.total) * 100)
-            });
-
-            ifcLoader.load("ifc.ifc", async function (mesh) {
-                sceneVar.add(mesh)
-                outsideRender()
-            })
-        }
-        loadIfcFile()
-    }, [sceneVar]);
 
     function outsideRender() {
         rendererVar.render(sceneVar, cameraVar);
