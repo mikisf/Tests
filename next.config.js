@@ -3,4 +3,5 @@ const nextConfig = {
   reactStrictMode: true,
 }
 
-module.exports = nextConfig
+const withTM = require('next-transpile-modules')(['openbim-components', '@popperjs/core', 'bim-fragment']);
+module.exports = withTM({nextConfig});

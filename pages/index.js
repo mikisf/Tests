@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import * as THREE from 'three';
-import * as OBC from 'openbim-components';
+import * as OBC from "../openbim-components-custom"
+import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js';
 
 export default function Home() {
 
@@ -11,69 +12,92 @@ export default function Home() {
     const [sceneVar, setSceneVar] = useState()
 
     useEffect(() => {
-        var container, camera, renderer, scene, controls
 
-        init();
-        render();
+        const container = mountRef.current;
 
-        function init() {
-            container = document.createElement('div');
-            scene = new THREE.Scene()
-            setSceneVar(scene)
-            scene.background = new THREE.Color(0x8cc7de);
+        const components = new OBC.Components();
+        components.scene = new OBC.SimpleScene(components);
+        components.renderer = new OBC.SimpleRenderer(components, container);
+        components.camera = new OBC.OrthoPerspectiveCamera(components);
+        components.raycaster = new OBC.SimpleRaycaster(components);
+        components.init();
 
-            // Camera
-            camera = new THREE.PerspectiveCamera(10, window.innerWidth / window.innerHeight, 1, 100000);
-            setCameraVar(camera)
-            camera.position.set(60, 40, 60);
-            camera.lookAt(new THREE.Vector3(0, 0, 0));
+        const scene = components.scene.get();
+        components.camera.controls.setLookAt(10, 10, 10, 0, 0, 0);
 
-            //Lights
-            const directionalLight1 = new THREE.DirectionalLight(0xffeeff, 0.8);
-            directionalLight1.position.set(1, 1, 1);
-            scene.add(directionalLight1);
-            const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight2.position.set(- 1, 0.5, - 1);
-            scene.add(directionalLight2);
-            const ambientLight = new THREE.AmbientLight(0xffffee, 0.25);
-            scene.add(ambientLight);
+        
+        const renderer = components.renderer.get()
+        const camera = components.camera.get()
+        renderer.render(scene, camera)
+        
+        console.log(components)
 
-            // Cube
-            const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
-            const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
-            const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-            cube.position.set(0, 0, 0);
-            scene.add(cube);
+        const controls = components._camera.controls
+        camera.addEventListener('change', () => console.log("hello2"));
+        console.log(camera)
 
-            // Renderer
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            setRendererVar(renderer)
-            renderer.setClearColor(scene.background.color);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.localClippingEnabled = true;
+        const grid = new OBC.SimpleGrid(components);
+        
+        components.scene.setup();
 
-            mountRef.current.appendChild(renderer.domElement);
-            controls = new OrbitControls(camera, renderer.domElement);
-            controls.update()
+        async function loadIfcAsFragments() {
+            let fragments = new OBC.FragmentManager(components);
+            let fragmentIfcLoader = new OBC.FragmentIfcLoader(components);
 
-            window.addEventListener('resize', onWindowResize, false);
-            controls.addEventListener('change', render);
+            fragmentIfcLoader.settings.wasm = {
+                path: "https://unpkg.com/web-ifc@0.0.46/",
+                absolute: true
+            }
+            fragmentIfcLoader.settings.webIfc.COORDINATE_TO_ORIGIN = true;
+            fragmentIfcLoader.settings.webIfc.OPTIMIZE_PROFILES = true;
+            const file = await fetch('../../../Revit Sant Vicenç.ifc');
+            const data = await file.arrayBuffer();
+            const buffer = new Uint8Array(data);
+            const model = await fragmentIfcLoader.load(buffer, "example");
+            scene.add(model);
         }
 
-        function render() {
-            renderer.render(scene, camera);
+        //loadIfcAsFragments()
+
+        const loadPly = () => {
+            var loader = new PLYLoader();
+            loader.load('bim.ply', function (geometry) {
+                geometry.center()
+                const material = new THREE.PointsMaterial({
+                    size: 0.01,
+                })
+                const mesh = new THREE.Points(geometry, material)
+
+                mesh.frustumCulled = false;
+                mesh.castShadow = true;
+                mesh.renderOrder = 6;
+
+                scene.add(mesh)
+                renderer.render(scene, camera)
+            })
         }
 
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight
-            camera.updateProjectionMatrix()
-            renderer.setSize(window.innerWidth, window.innerHeight)
-            render()
+        loadPly()
+
+        const loadClippers = () => {
+            
+            const clipper = new OBC.SimpleClipper(components);
+            clipper.material = new THREE.MeshBasicMaterial({
+                color: 0x0000ff,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.2,
+            })
+            clipper.size = 100
+            clipper.enabled = true;
+
+            clipper.createFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, -10, 0))
+            clipper.createFromNormalAndCoplanarPoint(new THREE.Vector3(1, 0, 0), new THREE.Vector3(-10, 0, 0))
         }
 
-        const localRef = mountRef.current ? mountRef.current : null;
-        return () => localRef.removeChild(renderer.domElement);
+        loadClippers()
+
+
     }, []);
 
     function outsideRender() {
@@ -81,6 +105,9 @@ export default function Home() {
     }
 
     return (
-        <div ref={mountRef} />
+        <div ref={mountRef} style={{
+            height: '100vh',
+            width: '100%'
+        }} />
     )
 }
