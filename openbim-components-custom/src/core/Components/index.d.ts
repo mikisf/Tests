@@ -35,7 +35,9 @@ export declare class Components implements Disposable {
     private _camera?;
     private _raycaster?;
     private _clock;
+    private _needsUpdate = false;
     /** {@link UIManager} */
+    set needsUpdate(needsUpdate: boolean);
     get ui(): UIManager;
     /**
      * The [Three.js renderer](https://threejs.org/docs/#api/en/renderers/WebGLRenderer)

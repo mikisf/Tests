@@ -85,6 +85,9 @@ export class Components {
     set raycaster(raycaster) {
         this._raycaster = raycaster;
     }
+    set needsUpdate(needsUpdate){
+        this._needsUpdate = needsUpdate;
+    }
     constructor() {
         /**
          * All the loaded [meshes](https://threejs.org/docs/#api/en/objects/Mesh).
@@ -105,10 +108,13 @@ export class Components {
             if (!this.enabled)
                 return;
             const delta = this._clock.getDelta();
-            await Components.update(this.scene, delta);
-            await Components.update(this.renderer, delta);
-            await Components.update(this.camera, delta);
-            await this.tools.update(delta);
+            if (this._camera.controls.update(delta) || this._needsUpdate) {
+                await Components.update(this.scene, delta);
+                await Components.update(this.renderer, delta);
+                await Components.update(this.camera, delta);
+                await this.tools.update(delta);
+                this._needsUpdate = false;
+            }
             const renderer = this.renderer.get();
             // Works the same as requestAnimationFrame, but let us use WebXR.
             renderer.setAnimationLoop(this.update);
