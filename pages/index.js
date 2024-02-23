@@ -90,7 +90,7 @@ export default function Home() {
             );
         }
 
-        loadIfcAsFragments2()
+        //loadIfcAsFragments2()
 
         async function loadIfcAsFragments() {
             let fragments = new OBC.FragmentManager(components);
@@ -103,10 +103,40 @@ export default function Home() {
             fragmentIfcLoader.settings.webIfc.COORDINATE_TO_ORIGIN = true;
             fragmentIfcLoader.settings.webIfc.OPTIMIZE_PROFILES = true;
 
-            const file = await fetch('../../../Revit Sant Vicenç.ifc');
-            const data = await file.arrayBuffer();
-            const buffer = new Uint8Array(data);
-            const model = await fragmentIfcLoader.load(buffer, "example");
+            const file1 = await fetch('../../../ifc1.ifc');
+            const data1 = await file1.arrayBuffer();
+            const buffer1 = new Uint8Array(data1);
+            const model1 = await fragmentIfcLoader.load(buffer1, "example");
+            scene.add(model1);
+
+            const file2 = await fetch('../../../ifc2.ifc');
+            const data2 = await file2.arrayBuffer();
+            const buffer2 = new Uint8Array(data2);
+            const model2 = await fragmentIfcLoader.load(buffer2, "example");
+            scene.add(model2);
+
+            const hider = new OBC.FragmentHider(components);
+            await hider.loadCached();
+
+            const classifier = new OBC.FragmentClassifier(components);
+            classifier.byStorey(model1);
+            classifier.byEntity(model1);
+            console.log(classifier.get())
+
+            const found1 = classifier.find({ entities: ["IFCSLAB"] });
+
+            classifier.dispose()
+            classifier.byStorey(model2);
+            classifier.byEntity(model2);
+            console.log(classifier.get())
+
+            const found2 = classifier.find({ entities: ["IFCSLAB"] });
+
+            //hider.set(false, found1);
+            hider.set(false, found2);
+
+            components.needsUpdate = true
+
 
             const getIfcCategories = async () => {
 
@@ -114,8 +144,8 @@ export default function Home() {
                 await hider.loadCached();
 
                 const classifier = new OBC.FragmentClassifier(components);
-                classifier.byStorey(model);
-                classifier.byEntity(model);
+                classifier.byStorey(model1);
+                classifier.byEntity(model1);
                 const classifications = classifier.get();
 
                 const classes = {};
@@ -130,10 +160,10 @@ export default function Home() {
 
             //getIfcCategories()
 
-            scene.add(model);
+
         }
 
-        //loadIfcAsFragments()
+        loadIfcAsFragments()
 
         const loadPly = () => {
             var loader = new PLYLoader();
